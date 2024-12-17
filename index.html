@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!--  Dodanie metadanych  -->
+    <meta charset="UTF-8">
+    <meta name="description" content="Side to calculate and visualize your route in Warsaw">
+    <meta name="keywords" content="HTML, CSS, JavaScript, Python">
+    <meta name="author" content="Krzysztof Rutkowski, Weronika Kałowska, Szymon Kowalczyk">
+    <!--  Ustawiwenie tytułu strony  -->
+    <title>Dane IMGW</title>
+    <!--  Dodanie styli css  -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!--  Dodanie mapy do strony  -->
+    <div id="map"></div>
+    <!--  Dodanie interfacu do strony  -->
+    <div class="interface">
+        <h3 class="T1">Dane IMGW</h3>
+        <div id="points">
+            <b>Wybierz date:</b>
+            <input type="date" id="day" name="Dane z dnia">
+            <hr style="width:100%" color="#4b5052">
+            <b>Wyświetl dane:</b>
+            <select id="dane">
+                <option value="temperatura">Temperatura</option>
+                <option value="opady">Opady</option>
+            </select>
+        </div>
+        <br>
+        <button class="button-12" onclick="calculateRoute()" ><b>Wybierz</b></button>
+        <button class="button-12" id="backButton" onclick="resetMap()" disabled><b>Powrót</b></button>
+    </div>
+    <!--  Dodanie skryptów do strony  -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
+    <script src="https://unpkg.com/leaflet-pip@1.1.0/leaflet-pip.min.js"></script>
+    <script>
+        //autorzy: Krzysztof Rutkowski, Weronika Kałowska, Szymon Kowalczyk
+    
+        //Dodanie mapy do strony, ustawienie punktu startowego i ograniczenie przybliżenia oraz oddalenia
+        var map = L.map('map', {
+            center: [52.165608, 19.333241],
+            zoom: 6,
+            minZoom: 6,
+            maxZoom: 6
+        });
+    
+        var originalBounds = map.getBounds();
+        var originalMinZoom = map.getMinZoom();
+        var originalMaxZoom = map.getMaxZoom();
+        var previousBounds;
+    
+        function resetMap() {
+            if (previousBounds) {
+                map.fitBounds(previousBounds);
+                map.setMaxBounds(previousBounds);
+                map.setMinZoom(originalMinZoom);
+                map.setMaxZoom(originalMaxZoom);
+                map.eachLayer(function (layer) {
+                    if (layer.feature && layer.feature.properties) {
+                        map.removeLayer(layer);
+                    }
+                });
+                loadWojLayer();
+                document.getElementById('backButton').disabled = true;
+            }
+        }
+    
+        function loadWojLayer() {
+            fetch('/static/woj.geojson')
+                .then(response => response.json())
+                .then(data => {
+                    var wojLayer = L.geoJSON(data, {
+                        style: {
+                            color: '#032200',
+                            weight: 1,
+                            opacity: 0.8,
+                            fillOpacity: 0.5
+                        },
+                        onEachFeature: function (feature, layer) {
+                            layer.on('click', function () {
+                                previousBounds = map.getBounds(); // Store the previous bounds
+                                layer.setStyle({ color: 'red' });
+                                fetch('/static/pow.geojson')
+                                    .then(response => response.json())
+                                    .then(powData => {
+                                        var powLayer = L.geoJSON(powData, {
+                                            filter: function (feature) {
+                                                return feature.properties.national_c.startsWith(layer.feature.properties.national_c);
+                                            },
+                                            style: {
+                                                color: '#0000FF',
+                                                weight: 1,
+                                                opacity: 0.8,
+                                                fillOpacity: 0.5
+                                            },
+                                            onEachFeature: function (feature, powLayer) {
+                                                powLayer.on('click', function () {
+                                                    var powBounds = powLayer.getBounds();
+                                                    map.fitBounds(powBounds);
+                                                    map.setView(powBounds.getCenter());
+                                                    map.setMinZoom(10);
+                                                    map.setMaxZoom(12);
+                                                    map.setMaxBounds(powBounds);
+                                                    map.on('drag', function() {
+                                                        map.panInsideBounds(powBounds, { animate: false });
+                                                    });
+                                                    powLayer.setStyle({ color: 'green' });
+                                                    fetch('/static/imgw_points.geojson')
+                                                    .then(response => response.json())
+                                                        .then(pointData => {
+                                                            var pointLayer = L.geoJSON(pointData)
+                                                    });
+                                                });x1
+                                            }
+                                        }).addTo(map);
+    
+                                        // Center the map on the added pow layer and set new bounds
+                                        map.setMinZoom(8);
+                                        map.setMaxZoom(10);
+                                        document.getElementById('backButton').disabled = false;
+                                        var powBounds = powLayer.getBounds();
+                                        map.fitBounds(powBounds);
+                                        map.setView(powBounds.getCenter());
+    
+                                        // Block moving from the new bounds
+                                        map.setMaxBounds(powBounds);
+                                        map.on('drag', function() {
+                                            map.panInsideBounds(powBounds, { animate: false });
+                                        });
+                                    })
+                                    .catch(error => {
+                                        console.error('Error loading pow.geojson:', error);
+                                    });
+    
+                                wojLayer.eachLayer(function (l) {
+                                    l.off('click');
+                                });
+                            });
+                        }
+                    }).addTo(map);
+                })
+                .catch(error => {
+                    console.error('Error loading GeoJSON:', error);
+                });
+        }
+    
+        loadWojLayer();
+    
+        fetch('/static/pol.geojson')
+            .then(response => response.json())
+            .then(data => {
+                polandLayer = L.geoJSON(data, {
+                    style: {
+                        color: '#000000',
+                        weight: 1,
+                        opacity: 0,
+                        fillOpacity: 0
+                    }
+                }).addTo(map);
+    
+                var bounds = polandLayer.getBounds();
+                //Ograniczenie możliwości oddalania się od Warszawy na stronie
+                bounds = bounds.pad(0.2);
+                map.setMaxBounds(bounds);
+                map.on('drag', function() {
+                    map.panInsideBounds(bounds, { animate: false });
+                });
+            })
+            //Alert jeżeli geojson się nie ładuje
+            .catch(error => {
+                console.error('Error loading GeoJSON:', error);
+            });
+    //Dodanie mapy osm jako mapę podkładową
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri'
+            }).addTo(map);
+    </script>
+    
+</body>
+</html>
