@@ -72,3 +72,16 @@ select {
   box-shadow: inset 0px 0.8px 0px -0.25px rgba(255, 255, 255, 0.2), 0px 0.5px 1px rgba(0, 0, 0, 0.1), 0px 0px 0px 1px rgba(0,0,0, 0.5);
   outline: 0;
 }
+
+.hover-info {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ccc;
+    padding: 5px 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    pointer-events: none; /* Ensures it doesn't block mouse events */
+    z-index: 1000;
+    color: #333;
+}
