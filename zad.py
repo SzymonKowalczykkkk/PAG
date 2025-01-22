@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import astral
 import sys
-sys.path.append(r'C:\Users\szymo\Desktop\5\PAG2\wys\Dane')
+sys.path.append(r'Dane')
 import os
-os.chdir(r'C:\Users\szymo\Desktop\5\PAG2\wys\Dane')
+os.chdir(r'Dane')
 from request import data_request
 import tkinter as tk
 import folium 
