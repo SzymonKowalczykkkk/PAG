@@ -21,14 +21,14 @@ def generuj_klucz(szerokosc, dlugosc):
     return hash_klucz
 
 
-df = pd.read_csv("kody_stacji.csv", sep=';', header=0, names=['Lp', 'kod_stacji', 'nazwa_stacji', 'szerokosc', 'dlugosc', 'wysokosc'])
+# df = pd.read_csv("kody_stacji.csv", sep=';', header=0, names=['Lp', 'kod_stacji', 'nazwa_stacji', 'szerokosc', 'dlugosc', 'wysokosc'])
 
-print(df.head(50))
+# print(df.head(50))
 
-for index, row in df.iterrows():
-    klucz = generuj_klucz(row['szerokosc'], row['dlugosc'])
-    wartosc = f"{row}"
-    r.set(klucz, wartosc)
+# for index, row in df.iterrows():
+#     klucz = generuj_klucz(row['szerokosc'], row['dlugosc'])
+#     wartosc = f"{row}"
+#     r.set(klucz, wartosc)
 
 print(r.get(generuj_klucz('49 59 44', '18 55 09')))
 
