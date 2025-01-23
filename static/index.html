@@ -95,15 +95,22 @@
                     if (layer.feature && layer.feature.properties) {
                         map.removeLayer(layer);
                     }
+                    // Remove any markers (circle markers)
+                    if (layer instanceof L.CircleMarker) {
+                        map.removeLayer(layer);
+                    }
                 });
                 loadPolLayer();
                 document.getElementById('backButton').disabled = true;
                 document.getElementById('day').disabled = false;
                 document.getElementById('dane').disabled = false;
                 document.getElementById('pora').disabled = false;
+                infoDiv.style.display = 'none';
+                infoDiv.innerHTML = '';
                 selectedPolygon = null;
             }
         }
+        
         
 
         function selectDate() {
@@ -189,15 +196,38 @@
                                                     fetch(`/points?teryt=${teryt_pow}&date=${selectedDate}&dane=${dane}&pora=${pora}`)
                                                     .then(response => response.json()) // Automatically parses JSON response
                                                     .then(points => {
-                                                        console.log(points); 
-                                                        points.forEach(([lng, lat]) => {
-                                                            L.circleMarker([lat, lng], {
+                                                        console.log(typeof  points);
+                                                        jsonString = points.replace(/\(/g, '[').replace(/\)/g, ']');
+                                                        array = JSON.parse(jsonString); 
+                                                        console.log(typeof  array);
+                                                        array.forEach(([lng, lat]) => {
+                                                            var marker = L.circleMarker([lat, lng], {
                                                                 radius: 5, // Size of the circle marker
                                                                 color: 'blue', // Border color
-                                                                fillColor: '#3388ff', // Fill color
+                                                                fillColor: '#3388ff',
                                                                 fillOpacity: 0.8 // Transparency
                                                             }).addTo(map);
+                                                        
+                                                            // Add an onclick event to fetch weather data
+                                                            marker.on('click', function () {
+                                                                fetch(`/weatherData?lng=${lng}&lat=${lat}&date=${selectedDate}&dane=${dane}&pora=${pora}`)
+                                                                    .then(response => response.json())
+                                                                    .then(weatherData => {
+                                                                        // Display weather data in the infoDiv or a popup
+                                                                        infoDiv.style.display = 'block';
+                                                                        infoDiv.innerHTML = `<h3 class="T1">Dane pogodowe</h3>
+                                                                            <strong>Temperatura:</strong> ${weatherData.temperature}°C<br>
+                                                                            <strong>Opady:</strong> ${weatherData.rainfall} mm<br>
+                                                                            <strong>Wiatr:</strong> ${weatherData.windSpeed} km/h<br>`;
+                                                                    })
+                                                                    .catch(error => {
+                                                                        console.error('Error fetching weather data:', error);
+                                                                        infoDiv.style.display = 'block';
+                                                                        infoDiv.innerHTML = `<strong>Nie udało się załadować danych pogodowych.</strong>`;
+                                                                    });
+                                                            });
                                                         });
+                                                        
                                                     })
                                                     .catch(error => {
                                                         console.error('Error fetching points:', error);

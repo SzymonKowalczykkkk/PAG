@@ -9,6 +9,7 @@ from pymongo import MongoClient
 import redis
 from bson import ObjectId
 import json
+import hashlib
 
 # Ustworzenie api
 app = FastAPI()
@@ -83,11 +84,28 @@ def fetchPoint(teryt: str,date: str, dane:str,pora: str):
         )
         points_str = r.get(teryt)
         points_list = [tuple(map(float, point.split(','))) for point in points_str.split(';')]
-        print(points_list)
-        return JSONResponse(content=json.dumps(points_list))
+        return points_list
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
+@app.get("/weatherData")
+def fetchData(lng, lat, date: str, dane:str,pora: str):
+    def generuj_klucz(szerokosc, dlugosc):
+        surowy_klucz = f"{szerokosc}:{dlugosc}"
+        hash_klucz = hashlib.md5(surowy_klucz.encode()).hexdigest()
+        return hash_klucz
+    year, month, day = date.split("-")
+    kod_str = r.get(generuj_klucz(lat, lng))
+    kod_list = kod_str.split(', ')
+    id = kod_list[0]
+    name = kod_list[1]
+    if dane == "temperatura":
+        
+    elif dane == "opady":
+
+    else:
+        return
+    return
 
 @app.get("/")
 def read_root():
