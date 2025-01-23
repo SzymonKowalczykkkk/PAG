@@ -23,42 +23,68 @@
         <h3 class="T1">Dane IMGW</h3>
         <div id="points">
             <b>Wybierz date:</b>
-            <input type="date" id="day" name="Dane z dnia">
+            <input type="date" id="day" name="Dane z dnia", value="2024-12-23">
             <hr style="width:100%" color="#4b5052">
-            <b>Wyświetl dane:</b>
+            <b>Dane:</b>
             <select id="dane">
                 <option value="temperatura">Temperatura</option>
                 <option value="opady">Opady</option>
-            </select>
+            </select><br>
+            <b>Pora dnia</b>
             <select id="pora">
-                <option value="dzien">Temperatura</option>
-                <option value="noc">Opady</option>
+                <option value="dzien">Dzień</option>
+                <option value="noc">Noc</option>
             </select>
         </div>
         <br>
-        <button class="button-12" onclick="selectDate()" ><b>Wybierz</b></button>
-        <button class="button-12" id="backButton" onclick="resetMap()" disabled><b>Powrót</b></button>
+        <button class="button-12" id="selectDate" onclick="selectDate()"><b>Potwierdź</b></button>
+        <button class="button-12" id="backButton" onclick="resetMap()" disabled><b>Reset</b></button>
     </div>
+    <div id="infoDiv" class="hover-info"></div>
     <!--  Dodanie skryptów do strony  -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
     <script src="https://unpkg.com/leaflet-pip@1.1.0/leaflet-pip.min.js"></script>
     <script>
         //autorzy: Krzysztof Rutkowski, Weronika Kałowska, Szymon Kowalczyk
-    
-        //Dodanie mapy do strony, ustawienie punktu startowego i ograniczenie przybliżenia oraz oddalenia
         var map = L.map('map', {
             center: [52.165608, 19.333241],
             zoom: 6,
             minZoom: 6,
             maxZoom: 6
         });
-    
+        infoDiv.style.display = 'none'
         var originalBounds = map.getBounds();
         var originalMinZoom = map.getMinZoom();
         var originalMaxZoom = map.getMaxZoom();
         var previousBounds;
-    
+        var selectedPolygon = null;
+
+        function loadPolLayer() {
+            fetch('/pol')
+                .then(response => response.json())
+                .then(data => {
+                    var polLayer = L.geoJSON(data, {
+                        style: {
+                            color: '#ddf0e2',
+                            weight: 1,
+                            opacity: 0.1    ,
+                            fillOpacity: 0.5
+                        },
+                    }).addTo(map);
+                    var polBounds = polLayer.getBounds();
+                    map.fitBounds(polBounds);
+                    map.setMaxBounds(polBounds);
+                    map.on('drag', function () {
+                        map.panInsideBounds(polBounds, { animate: false });
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading pol.geojson:', error);
+                });
+        }
+        loadPolLayer();
+
         function resetMap() {
             if (previousBounds) {
                 map.fitBounds(previousBounds);
@@ -70,13 +96,28 @@
                         map.removeLayer(layer);
                     }
                 });
-                loadWojLayer();
+                loadPolLayer();
                 document.getElementById('backButton').disabled = true;
+                document.getElementById('day').disabled = false;
+                document.getElementById('dane').disabled = false;
+                document.getElementById('pora').disabled = false;
+                selectedPolygon = null;
             }
         }
-    
-        function loadWojLayer() {
-            let infoDiv;
+        
+
+        function selectDate() {
+            map.eachLayer(function (layer) {
+                if (layer.feature && layer.feature.properties && layer.feature.properties.national_c) {
+                    map.removeLayer(layer);
+                }
+            });
+            selectedDate = document.getElementById('day').value;
+            dane = document.getElementById('dane').value
+            pora = document.getElementById('pora').value
+            document.getElementById('day').disabled = true;
+            document.getElementById('dane').disabled = true;
+            document.getElementById('pora').disabled = true;
             fetch('/woj')
                 .then(response => response.json())
                 .then(data => {
@@ -84,141 +125,93 @@
                         style: {
                             color: '#032200',
                             weight: 1,
-                            opacity: 0.8,
+                            opacity: 0.2,
                             fillOpacity: 0.5
                         },
                         onEachFeature: function (feature, layer) {
-                            // Add mouseover event
-                            layer.on('mouseover', function (e) {
-                                if (!infoDiv) {
-                                    infoDiv = L.DomUtil.create('div', 'hover-info'); // Create a new div for the info
-                                    document.body.appendChild(infoDiv); // Append it to the body
+                            layer.on('mouseover', function () {
+                                if (!selectedPolygon) {
+                                    infoDiv.style.display = 'block';
+                                    infoDiv.innerHTML = `<h3 class="T1">Informacje</h3><strong>Nazwa:</strong> ${feature.properties.name} <br><strong>TERYT:</strong>${feature.properties.national_c}`;
                                 }
-
-                                // Set the content of the info div
-                                infoDiv.innerHTML = `<strong>Region:</strong> ${feature.properties.name}`;
-
-                                // Position the info div near the cursor
-                                document.addEventListener('mousemove', function moveInfo(e) {
-                                    if (infoDiv) {
-                                        infoDiv.style.left = `${e.pageX + 10}px`;
-                                        infoDiv.style.top = `${e.pageY + 10}px`;
-                                    }
-                                });
                             });
-
-                            // Add mouseout event
                             layer.on('mouseout', function () {
-                                if (infoDiv) {
-                                    document.body.removeChild(infoDiv); // Remove the info div
-                                    infoDiv = null; // Clear the reference
+                                if (!selectedPolygon) {
+                                    infoDiv.style.display = 'none';
                                 }
                             });
-
-                            // Add click event
                             layer.on('click', function () {
-                                alert(`Feature clicked: ${feature.properties.name}`);
-                            });
-                        }
-                    }).addTo(map);
-                })
-                .catch(error => {
-                    console.error('Error loading GeoJSON:', error);
-                });
-        }
-
-        function SelectDate() {
-            const selectedDate = document.getElementById('day').value; // Get the selected date
-            if (!selectedDate) {
-                alert('Please select a date first!');
-                return;
-            }
-
-            // Fetch woj.geojson data and dynamically set onclick for each woj layer
-            fetch('/woj')
-                .then(response => response.json())
-                .then(data => {
-                    var wojLayer = L.geoJSON(data, {
-                        style: {
-                            color: '#032200',
-                            weight: 1,
-                            opacity: 0.8,
-                            fillOpacity: 0.5
-                        },
-                        onEachFeature: function (feature, layer) {
-                            // Dynamically add an onclick event
-                            layer.on('click', function () {
-                                // Get the TERYT attribute from the clicked feature
-                                teryt = feature.properties.national_c;
-                                console.log(`Selected TERYT: ${teryt}`);
+                                if (selectedPolygon) return; // Block interaction if a polygon is already selected
+                        
+                                selectedPolygon = layer; // Mark the current polygon as selected
+                                teryt_woj = feature.properties.national_c;
                                 previousBounds = map.getBounds(); // Store the previous bounds
                                 layer.setStyle({ color: 'red' });
-                                // Fetch pow.geojson and filter by TERYT
-                                fetch(`/pow?teryt=${teryt}`)
+                                var featureBounds = layer.getBounds();
+                                map.setMinZoom(8);
+                                map.setMaxZoom(10);
+                                map.fitBounds(featureBounds);
+                                map.setMaxBounds(featureBounds);
+                                map.on('drag', function () {
+                                    map.panInsideBounds(featureBounds, { animate: false });
+                                });
+                                fetch(`/pow?teryt=${teryt_woj}`)
                                     .then(response => response.json())
                                     .then(powData => {
                                         var powLayer = L.geoJSON(powData, {
                                             style: {
                                                 color: '#0000FF',
                                                 weight: 1,
-                                                opacity: 0.8,
+                                                opacity: 0.3,
                                                 fillOpacity: 0.5
                                             },
                                             onEachFeature: function (feature, layer) {
+                                                layer.on('mouseover', function () {
+                                                    infoDiv.style.display = 'block';
+                                                    infoDiv.innerHTML = `<h3 class="T1">Informacje</h3><strong>Nazwa:</strong> ${feature.properties.name} <br><strong>TERYT:</strong>${feature.properties.national_c}`;
+                                                });
+                                                layer.on('mouseout', function () {
+                                                    infoDiv.style.display = 'none';
+                                                });
                                                 layer.on('click', function () {
-                                                    coords = feature.properties.coordinates
+                                                    teryt_pow = feature.properties.national_c
+                                                    console.log(teryt_pow)
                                                     var powBounds = layer.getBounds();
                                                     map.fitBounds(powBounds);
                                                     map.setView(powBounds.getCenter());
                                                     map.setMinZoom(10);
                                                     map.setMaxZoom(12);
                                                     map.setMaxBounds(powBounds);
+                                                    layer.setStyle({ color: 'red' });
                                                     map.on('drag', function () {
                                                         map.panInsideBounds(powBounds, { animate: false });
                                                     });
-                                                    fetch(`/points?coords=${coords}`)
-                                                        .then(response => response.json())
-                                                        .then(pointData => {
-                                                            var pointLayer = L.geoJSON(pointData, {
-                                                                onEachFeature: function (feature, layer) {
-                                                                    layer.bindPopup(
-                                                                        `<b>Stacja:</b> ${feature.properties.name}<br>
-                                                                        <b>Temperatura:</b> ${feature.properties.temperature} °C<br>
-                                                                        <b>Data:</b> ${feature.properties.date}`
-                                                                    );
-                                                                },
-                                                                pointToLayer: function (feature, latlng) {
-                                                                    return L.circleMarker(latlng, {
-                                                                        radius: 5,
-                                                                        color: 'orange'
-                                                                    });
-                                                                }
+                                                    fetch(`/points?teryt=${teryt_pow}&date=${selectedDate}&dane=${dane}&pora=${pora}`)
+                                                    .then(response => response.json()) // Automatically parses JSON response
+                                                    .then(points => {
+                                                        console.log(points); 
+                                                        points.forEach(([lng, lat]) => {
+                                                            L.circleMarker([lat, lng], {
+                                                                radius: 5, // Size of the circle marker
+                                                                color: 'blue', // Border color
+                                                                fillColor: '#3388ff', // Fill color
+                                                                fillOpacity: 0.8 // Transparency
                                                             }).addTo(map);
-                                                        })
-                                                        .catch(error => {
-                                                            console.error('Error loading imgw_points.geojson:', error);
                                                         });
+                                                    })
+                                                    .catch(error => {
+                                                        console.error('Error fetching points:', error);
+                                                    });
+
                                                 });
                                             }
                                         }).addTo(map);
-
-                                        map.setMinZoom(8);
-                                        map.setMaxZoom(10);
-                                        document.getElementById('backButton').disabled = false;
-                                        var powBounds = powLayer.getBounds();
-                                        map.fitBounds(powBounds);
-                                        map.setView(powBounds.getCenter());
-
-                                        map.setMaxBounds(powBounds);
-                                        map.on('drag', function () {
-                                            map.panInsideBounds(powBounds, { animate: false });
-                                        });
                                     })
                                     .catch(error => {
                                         console.error('Error loading pow.geojson:', error);
                                     });
                             });
-                        }
+                        }                        
                     }).addTo(map);
                 })
                 .catch(error => {
@@ -227,8 +220,6 @@
 
             document.getElementById('backButton').disabled = false;
         }
-        loadWojLayer();
-
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}', {
             attribution: 'Tiles &copy; Esri &mdash; Source: Esri'
         }).addTo(map);
