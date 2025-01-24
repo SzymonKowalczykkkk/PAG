@@ -2,38 +2,83 @@ import pandas
 import geopandas
 import matplotlib.pyplot as plt
 import numpy as np
-import astral
-import sys
-sys.path.append(r'Dane')
-import os
-os.chdir(r'Dane')
-from request import data_request
+from neo4j import GraphDatabase
+import geojson
 import tkinter as tk
-import folium 
+from tkinter import ttk
 
-if __name__ == '__main__':
-    powiaty = geopandas.read_file('powiaty.shp')
-    wojewodztwa = geopandas.read_file('woj.shp')
-    dane = geopandas.read_file('effacility.geojson')
+# Upewnij się, że używasz poprawnych danych uwierzytelniających
+username = "neo4j"
+password = "19MhiW09!"  # Zmień na swoje hasło
 
-    window = tk.Tk()
-    window.title("Weather data")
-    window.geometry('400x200')  
-    window.resizable(False, False)
-    window.configure(background='grey')
+driver = GraphDatabase.driver("bolt://localhost:7687", auth=(username, password))
+session = driver.session()
 
-    #data = data_request(1, 2020)
+source_x = 20.9963881
+source_y = 52.1652338
+target_x = 20.9993645
+target_y = 52.1569005
 
-#uwtórz stronę internetową wyświetlającą wojweództwa na mapie jak się przybliżyć to powiaty i lokalizacje stacji pogodowych
-#dodaj przyciski do zmiany miesiąca i roku
-#dodaj przycisk do pobrania danych
+# Tworzenie grafu
+create_graph_query = """
+MATCH (source:Nodes)-[r:RELATED]->(target:Nodes)
+RETURN gds.graph.project(
+  'NavGraph25',
+  source,
+  target,
+  {
+    sourceNodeProperties: source { .x, .y },
+    targetNodeProperties: target { .x, .y },
+    relationshipProperties: r { .length }
+  }
+)
+"""
+# session.run(create_graph_query)
 
-    m = folium.Map(location=[52, 19], zoom_start=6)
-    folium.GeoJson(wojewodztwa).add_to(m)
-    folium.GeoJson(powiaty).add_to(m)
-    folium.GeoJson(dane).add_to(m)
+# Wykonywanie zapytania A* do znalezienia najkrótszej ścieżki
+shortest_path_query = f"""
+MATCH (source {{x: {source_x}, y: {source_y}}}), (target {{x: {target_x}, y: {target_y}}})
+CALL gds.shortestPath.astar.stream('NavGraph25', {{
+    sourceNode: source,
+    targetNode: target,
+    latitudeProperty: 'x',
+    longitudeProperty: 'y',
+    relationshipWeightProperty: 'length'
+}})
+YIELD index, sourceNode, targetNode, totalCost, nodeIds, costs, path
+RETURN
+index,
+gds.util.asNode(sourceNode).name AS sourceNodeName,
+gds.util.asNode(targetNode).name AS targetNodeName,
+totalCost,
+[nodeId IN nodeIds | gds.util.asNode(nodeId).name] AS nodeNames,
+costs,
+nodes(path) as path
+ORDER BY index
+"""
+result = session.run(shortest_path_query)
 
-    m.save('map.html')
-    os.system('map.html')
+# Przetwarzanie wyników i zapisywanie do GeoJSON
+features = []
+for record in result:
+    path = record['path']
+    coordinates = [(node['x'], node['y']) for node in path]
+    feature = geojson.Feature(
+        geometry=geojson.LineString(coordinates),
+        properties={
+            "index": record['index'],
+            "sourceNodeName": record['sourceNodeName'],
+            "targetNodeName": record['targetNodeName'],
+            "totalCost": record['totalCost'],
+            "nodeNames": record['nodeNames'],
+            "costs": record['costs']
+        }
+    )
+    features.append(feature)
 
-    window.mainloop()
+feature_collection = geojson.FeatureCollection(features)
+
+with open('shortest_path.geojson', 'w') as f:
+    geojson.dump(feature_collection, f, indent=2)
+
+session.close()
