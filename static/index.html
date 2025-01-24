@@ -1,24 +1,19 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <!--  Dodanie metadanych  -->
     <meta http-equiv='cache-control' content='no-cache'>
     <meta http-equiv='expires' content='0'>
     <meta http-equiv='pragma' content='no-cache'>
     <meta charset="UTF-8">
-    <meta name="description" content="Side to calculate and visualize your route in Warsaw">
+    <meta name="description" content="Strona do sprawdzania pomiarów temperatury na stacjach IMGW">
     <meta name="keywords" content="HTML, CSS, JavaScript, Python">
     <meta name="author" content="Krzysztof Rutkowski, Weronika Kałowska, Szymon Kowalczyk">
-    <!--  Ustawiwenie tytułu strony  -->
     <title>Dane IMGW</title>
-    <!--  Dodanie styli css  -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <!--  Dodanie mapy do strony  -->
     <div id="map"></div>
-    <!--  Dodanie interfacu do strony  -->
     <div class="interface">
         <h3 class="T1">Dane IMGW</h3>
         <div id="points">
@@ -28,8 +23,8 @@
             <b>Dane:</b>
             <select id="dane">
                 <option value="temperatura">Temperatura</option>
-                <option value="opady">Opady</option>
-                <option value="wiart">Wiatr</option>
+                <!-- <option value="opady">Opady</option> -->
+                <!-- <option value="wiart">Wiatr</option> -->
             </select>
         </div>
         <br>
@@ -37,7 +32,6 @@
         <button class="button-12" id="backButton" onclick="resetMap()" disabled><b>Reset</b></button>
     </div>
     <div id="infoDiv" class="hover-info"></div>
-    <!--  Dodanie skryptów do strony  -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
     <script src="https://unpkg.com/leaflet-pip@1.1.0/leaflet-pip.min.js"></script>
@@ -91,7 +85,6 @@
                     if (layer.feature && layer.feature.properties) {
                         map.removeLayer(layer);
                     }
-                    // Remove any markers (circle markers)
                     if (layer instanceof L.CircleMarker) {
                         map.removeLayer(layer);
                     }
@@ -144,11 +137,11 @@
                                 }
                             });
                             layer.on('click', function () {
-                                if (selectedPolygon) return; // Block interaction if a polygon is already selected
+                                if (selectedPolygon) return;
                         
-                                selectedPolygon = layer; // Mark the current polygon as selected
+                                selectedPolygon = layer;
                                 teryt_woj = feature.properties.national_c;
-                                previousBounds = map.getBounds(); // Store the previous bounds
+                                previousBounds = map.getBounds();
                                 layer.setStyle({ color: 'red' });
                                 var featureBounds = layer.getBounds();
                                 map.setMinZoom(8);
@@ -190,24 +183,23 @@
                                                         map.panInsideBounds(powBounds, { animate: false });
                                                     });
                                                     fetch(`/points?teryt=${teryt_pow}&date=${selectedDate}&dane=${dane}&pora=${pora}`)
-                                                    .then(response => response.json()) // Automatically parses JSON response
+                                                    .then(response => response.json())
                                                     .then(points => {
                                                         points.forEach(([lng, lat]) => {
                                                             var marker = L.circleMarker([lat, lng], {
-                                                                radius: 5, // Size of the circle marker
-                                                                color: 'blue', // Border color
+                                                                radius: 5,
+                                                                color: 'blue',
                                                                 fillColor: '#3388ff',
-                                                                fillOpacity: 0.8 // Transparency
+                                                                fillOpacity: 0.8
                                                             }).addTo(map);
-                                                        
-                                                            // Add an onclick event to fetch weather data
                                                             marker.on('click', function () {
                                                                 fetch(`/weatherData?lng=${lng}&lat=${lat}&date=${selectedDate}&dane=${dane}&pora=${pora}`)
                                                                     .then(response => response.json())
                                                                     .then(weatherData => {
                                                                         console.log(typeof weatherData)
+                                                                        console.log(weatherData)
                                                                         if (dane == "temperatura"){
-                                                                            alert(`Stacja: ${weatherData[4]}\nŚrednia temperatura powietrza: ${Math.round((weatherData[0] + Number.EPSILON) * 100) / 100}°C\nMediana temperatury powitrza: ${Math.round((weatherData[1] + Number.EPSILON) * 100) / 100} °C\nŚrednia temperatura gruntu: ${Math.round((weatherData[2] + Number.EPSILON) * 100) / 100}°C\nMediana temperatury gruntu: ${Math.round((weatherData[3] + Number.EPSILON) * 100) / 100} °C`);
+                                                                            alert(`Stacja: ${weatherData[6]}\nŚrednia temperatura powietrza: ${Math.round((weatherData[0] + Number.EPSILON) * 100) / 100}°C\nMediana temperatury powitrza: ${Math.round((weatherData[1] + Number.EPSILON) * 100) / 100} °C\nŚrednia temperatura gruntu: ${Math.round((weatherData[2] + Number.EPSILON) * 100) / 100}°C\nMediana temperatury gruntu: ${Math.round((weatherData[3] + Number.EPSILON) * 100) / 100} °C\nMaksymalna temperatura powietrza: ${Math.round((weatherData[4] + Number.EPSILON) * 100) / 100} °C\nMaksymalna temperatura gruntu: ${Math.round((weatherData[5] + Number.EPSILON) * 100) / 100} °C`);
                                                                         }
                                                                         if (dane == "opady"){
                                                                             alert(`Stacja: ${weatherData[4]}\nŚrednia temperatura powietrza: ${Math.round((weatherData[0] + Number.EPSILON) * 100) / 100}°C\nMediana temperatury powitrza: ${Math.round((weatherData[1] + Number.EPSILON) * 100) / 100} °C\nŚrednia temperatura gruntu: ${Math.round((weatherData[2] + Number.EPSILON) * 100) / 100}°C\nMediana temperatury gruntu: ${Math.round((weatherData[3] + Number.EPSILON) * 100) / 100} °C`);
