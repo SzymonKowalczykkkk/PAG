@@ -9,7 +9,7 @@ from tkinter import ttk
 
 # Upewnij się, że używasz poprawnych danych uwierzytelniających
 username = "neo4j"
-password = "haslo"  # Zmień na swoje hasło
+password = "haslo"
 
 driver = GraphDatabase.driver("bolt://localhost:7687", auth=(username, password))
 session = driver.session()
