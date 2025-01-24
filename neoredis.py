@@ -17,6 +17,7 @@ r = redis.Redis(
     password="7m8lWRkGUY7C10hSvWRpx3Tnj6cqay65",
 )
 
+# generowanie klucza do uzyskania wartości
 def generuj_klucz(szerokosc, dlugosc):
     surowy_klucz = f"{szerokosc}:{dlugosc}"
     hash_klucz = hashlib.md5(surowy_klucz.encode()).hexdigest()
