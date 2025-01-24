@@ -23,18 +23,13 @@
         <h3 class="T1">Dane IMGW</h3>
         <div id="points">
             <b>Wybierz date:</b>
-            <input type="date" id="day" name="Dane z dnia", value="2024-12-23">
+            <input type="date" id="day" name="Dane z dnia", value="2024-11-23">
             <hr style="width:100%" color="#4b5052">
             <b>Dane:</b>
             <select id="dane">
                 <option value="temperatura">Temperatura</option>
                 <option value="opady">Opady</option>
                 <option value="wiart">Wiatr</option>
-            </select><br>
-            <b>Pora dnia</b>
-            <select id="pora">
-                <option value="dzien">Dzień</option>
-                <option value="noc">Noc</option>
             </select>
         </div>
         <br>
@@ -105,7 +100,7 @@
                 document.getElementById('backButton').disabled = true;
                 document.getElementById('day').disabled = false;
                 document.getElementById('dane').disabled = false;
-                document.getElementById('pora').disabled = false;
+                document.getElementById('selectDate').disabled = false;
                 infoDiv.style.display = 'none';
                 infoDiv.innerHTML = '';
                 selectedPolygon = null;
@@ -122,10 +117,10 @@
             });
             selectedDate = document.getElementById('day').value;
             dane = document.getElementById('dane').value
-            pora = document.getElementById('pora').value
+            pora = 0
             document.getElementById('day').disabled = true;
             document.getElementById('dane').disabled = true;
-            document.getElementById('pora').disabled = true;
+            document.getElementById('selectDate').disabled = true;
             fetch('/woj')
                 .then(response => response.json())
                 .then(data => {
@@ -197,11 +192,7 @@
                                                     fetch(`/points?teryt=${teryt_pow}&date=${selectedDate}&dane=${dane}&pora=${pora}`)
                                                     .then(response => response.json()) // Automatically parses JSON response
                                                     .then(points => {
-                                                        console.log(typeof  points);
-                                                        jsonString = points.replace(/\(/g, '[').replace(/\)/g, ']');
-                                                        array = JSON.parse(jsonString); 
-                                                        console.log(typeof  array);
-                                                        array.forEach(([lng, lat]) => {
+                                                        points.forEach(([lng, lat]) => {
                                                             var marker = L.circleMarker([lat, lng], {
                                                                 radius: 5, // Size of the circle marker
                                                                 color: 'blue', // Border color
@@ -214,12 +205,17 @@
                                                                 fetch(`/weatherData?lng=${lng}&lat=${lat}&date=${selectedDate}&dane=${dane}&pora=${pora}`)
                                                                     .then(response => response.json())
                                                                     .then(weatherData => {
-                                                                        // Display weather data in the infoDiv or a popup
-                                                                        infoDiv.style.display = 'block';
-                                                                        infoDiv.innerHTML = `<h3 class="T1">Dane pogodowe</h3>
-                                                                            <strong>Temperatura:</strong> ${weatherData.temperature}°C<br>
-                                                                            <strong>Opady:</strong> ${weatherData.rainfall} mm<br>
-                                                                            <strong>Wiatr:</strong> ${weatherData.windSpeed} km/h<br>`;
+                                                                        console.log(typeof weatherData)
+                                                                        if (dane == "temperatura"){
+                                                                            alert(`Stacja: ${weatherData[4]}\nŚrednia temperatura powietrza: ${Math.round((weatherData[0] + Number.EPSILON) * 100) / 100}°C\nMediana temperatury powitrza: ${Math.round((weatherData[1] + Number.EPSILON) * 100) / 100} °C\nŚrednia temperatura gruntu: ${Math.round((weatherData[2] + Number.EPSILON) * 100) / 100}°C\nMediana temperatury gruntu: ${Math.round((weatherData[3] + Number.EPSILON) * 100) / 100} °C`);
+                                                                        }
+                                                                        if (dane == "opady"){
+                                                                            alert(`Stacja: ${weatherData[4]}\nŚrednia temperatura powietrza: ${Math.round((weatherData[0] + Number.EPSILON) * 100) / 100}°C\nMediana temperatury powitrza: ${Math.round((weatherData[1] + Number.EPSILON) * 100) / 100} °C\nŚrednia temperatura gruntu: ${Math.round((weatherData[2] + Number.EPSILON) * 100) / 100}°C\nMediana temperatury gruntu: ${Math.round((weatherData[3] + Number.EPSILON) * 100) / 100} °C`);
+                                                                        }
+                                                                        if (dane == "wiart"){
+                                                                            alert(`Stacja: ${weatherData[4]}\nŚrednia temperatura powietrza: ${Math.round((weatherData[0] + Number.EPSILON) * 100) / 100}°C\nMediana temperatury powitrza: ${Math.round((weatherData[1] + Number.EPSILON) * 100) / 100} °C\nŚrednia temperatura gruntu: ${Math.round((weatherData[2] + Number.EPSILON) * 100) / 100}°C\nMediana temperatury gruntu: ${Math.round((weatherData[3] + Number.EPSILON) * 100) / 100} °C`);
+                                                                        }
+                                                                        
                                                                     })
                                                                     .catch(error => {
                                                                         console.error('Error fetching weather data:', error);
