@@ -5,6 +5,7 @@ import geopandas as gpd
 import zipfile
 import string
 
+# Funkcja automatycznie pobierające dane pogodowe
 def data_request(month, year) -> pd.DataFrame:
     base = "https://dane.imgw.pl/datastore/getfiledown/Arch/Telemetria/Meteo"
     link = f"{base}/{year}/Meteo_{year}-{month}.zip"
